@@ -311,13 +311,15 @@ func TestAccAWSDynamoDbTable_basic(t *testing.T) {
 func TestAccAWSDynamoDbTable_streamSpecification(t *testing.T) {
 	var conf dynamodb.DescribeTableOutput
 
+	tableName := fmt.Sprintf("TerraformTestStreamTable-%s", acctest.RandString(8))
+
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckAWSDynamoDbTableDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSDynamoDbConfigStreamSpecification(true, "KEYS_ONLY"),
+				Config: testAccAWSDynamoDbConfigStreamSpecification(tableName, true, "KEYS_ONLY"),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckInitialAWSDynamoDbTableExists("aws_dynamodb_table.basic-dynamodb-table", &conf),
 					resource.TestCheckResourceAttr("aws_dynamodb_table.basic-dynamodb-table", "stream_enabled", "true"),
@@ -327,7 +329,7 @@ func TestAccAWSDynamoDbTable_streamSpecification(t *testing.T) {
 				),
 			},
 			{
-				Config: testAccAWSDynamoDbConfigStreamSpecification(false, ""),
+				Config: testAccAWSDynamoDbConfigStreamSpecification(tableName, false, ""),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckInitialAWSDynamoDbTableExists("aws_dynamodb_table.basic-dynamodb-table", &conf),
 					resource.TestCheckResourceAttr("aws_dynamodb_table.basic-dynamodb-table", "stream_enabled", "false"),
@@ -347,7 +349,7 @@ func TestAccAWSDynamoDbTable_streamSpecificationValidation(t *testing.T) {
 		CheckDestroy: testAccCheckAWSDynamoDbTableDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:      testAccAWSDynamoDbConfigStreamSpecification(true, ""),
+				Config:      testAccAWSDynamoDbConfigStreamSpecification("anything", true, ""),
 				ExpectError: regexp.MustCompile(`stream_view_type is required when stream_enabled = true$`),
 			},
 		},
@@ -1031,10 +1033,10 @@ resource "aws_dynamodb_table" "basic-dynamodb-table" {
 }`, rName)
 }
 
-func testAccAWSDynamoDbConfigStreamSpecification(enabled bool, viewType string) string {
+func testAccAWSDynamoDbConfigStreamSpecification(tableName string, enabled bool, viewType string) string {
 	return fmt.Sprintf(`
 resource "aws_dynamodb_table" "basic-dynamodb-table" {
-  name = "TerraformTestStreamTable-%d"
+  name = "%s"
   read_capacity = 10
   write_capacity = 20
   hash_key = "TestTableHashKey"
@@ -1047,7 +1049,7 @@ resource "aws_dynamodb_table" "basic-dynamodb-table" {
   stream_enabled = %t
   stream_view_type = "%s"
 }
-`, acctest.RandInt(), enabled, viewType)
+`, tableName, enabled, viewType)
 }
 
 func testAccAWSDynamoDbConfigTags() string {
